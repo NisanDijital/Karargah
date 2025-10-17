@@ -1,30 +1,64 @@
-# app.py
 import streamlit as st
+import requests
+import os
 
-# Sayfa ayarları
 st.set_page_config(page_title="AI Dashboard", page_icon="🤖", layout="wide")
+st.title("🔐 Şifre Korumalı AI Dashboard")
 
-# Başlık
-st.title("🤖 AI Destekli Dashboard")
+# --- Şifre kontrolü ---
+password = st.sidebar.text_input("Şifre", type="password")
+if password != os.getenv("DASHBOARD_PASS"):
+    st.error("Yetkisiz giriş. Lütfen doğru şifreyi gir.")
+    st.stop()
 
-# Sidebar
-with st.sidebar:
-    st.header("Kontroller")
-    st.write("Buraya filtreler, parametreler eklenebilir.")
+# --- Kullanıcı girişi ---
+user_input = st.text_input("Komut gir:")
 
-# Ana alan
-col1, col2 = st.columns([2, 1])
+# --- API anahtarları ---
+openai_key = os.getenv("OPENAI_API_KEY")
+gemini_key = os.getenv("GEMINI_API_KEY")
 
-with col1:
-    st.subheader("Panel Alanı")
-    st.info("Burada grafikler, tablolar veya AI çıktıları görünecek.")
+if user_input:
+    col1, col2 = st.columns(2)
 
-with col2:
-    st.subheader("AI / API Çıktısı")
-    st.write("Buraya AI fonksiyonunu veya API entegrasyonunu ekleyeceksin.")
-    # Örnek placeholder
-    user_input = st.text_input("Komut gir:")
-    if user_input:
-        st.success(f"AI cevabı burada görünecek → '{user_input}' işlendi.")
-        # Buraya kendi modelini veya API çağrını koyabilirsin
-        # örn: response = call_my_api(user_input)
+    # --- OpenAI cevabı ---
+    with col1:
+        st.subheader("OpenAI Cevabı")
+        if openai_key:
+            headers = {"Authorization": f"Bearer {openai_key}"}
+            data = {
+                "model": "gpt-4o-mini",  # gerekirse "gpt-3.5-turbo" deneyebilirsin
+                "messages": [{"role": "user", "content": user_input}]
+            }
+            r = requests.post("https://api.openai.com/v1/chat/completions",
+                              headers=headers, json=data)
+            if r.status_code == 200:
+                result = r.json()
+                answer = result["choices"][0]["message"]["content"]
+                st.success(answer)
+                st.json(result)  # debug için
+            else:
+                st.error(f"OpenAI hata: {r.text}")
+        else:
+            st.warning("OPENAI_API_KEY bulunamadı.")
+
+    # --- Gemini cevabı ---
+    with col2:
+        st.subheader("Gemini Cevabı")
+        if gemini_key:
+            data = {
+                "contents": [{"parts": [{"text": user_input}]}]
+            }
+            r = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={gemini_key}",
+                json=data
+            )
+            if r.status_code == 200:
+                result = r.json()
+                answer = result["candidates"][0]["content"]["parts"][0]["text"]
+                st.success(answer)
+                st.json(result)  # debug için
+            else:
+                st.error(f"Gemini hata: {r.text}")
+        else:
+            st.warning("GEMINI_API_KEY bulunamadı.")
