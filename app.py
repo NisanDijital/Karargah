@@ -46,13 +46,11 @@ if user_input:
     with col2:
         st.subheader("Gemini Cevabı")
         if gemini_key:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             data = {
                 "contents": [{"parts": [{"text": user_input}]}]
             }
-            r = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={gemini_key}",
-                json=data
-            )
+            r = requests.post(url, json=data)
             if r.status_code == 200:
                 result = r.json()
                 answer = result["candidates"][0]["content"]["parts"][0]["text"]
